@@ -101,12 +101,12 @@
     <div class="blob bottom-0 right-0"></div>
     <div id="root"></div>
 
-    <!-- Global Security Script (Anti-Inspect) -->
+    <!-- Global Security Script (Anti-Cheat) -->
     <script>
-        // Disable Right Click
+        // Right click block karne ke liye
         document.addEventListener('contextmenu', e => e.preventDefault());
         
-        // Disable keyboard shortcuts for inspecting code
+        // Inspect element shortcut block karne ke liye
         document.onkeydown = function(e) {
             if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74)) || (e.ctrlKey && e.keyCode == 85)) {
                 return false;
@@ -174,7 +174,7 @@
                 if (examState.active) setVisitedIndices(prev => new Set(prev).add(examState.currentIndex));
             }, [examState.currentIndex, examState.active]);
 
-            // PDF Generation Logic
+            // PDF Report Generator
             const generatePDF = (data) => {
                 try {
                     const { jsPDF } = window.jspdf;
@@ -220,9 +220,8 @@
 
             const startExam = () => {
                 if (currentTime > examEnd) return setModal({ show: true, title: "Portal Closed", message: "Deadline passed on 29-12-2025.", type: "error" });
-                if (!studentData.name || !studentData.roll) return setModal({ show: true, title: "Input Required", message: "Please enter Name and Roll Number to enter the terminal.", type: "error" });
+                if (!studentData.name || !studentData.roll) return setModal({ show: true, title: "Input Required", message: "Please enter Name and Roll Number to enter the exam.", type: "error" });
 
-                // CRITICAL FIX: Fullscreen call removed to avoid Permission Policy errors in restricted environments
                 setExamState({ 
                     active: true, 
                     questions: [...QUESTION_POOL].sort(() => Math.random() - 0.5), 
@@ -293,34 +292,34 @@
                         <div className="flex items-center gap-4 border-l border-white/10 pl-4">
                             <i data-lucide="shield-check" className="text-blue-500 w-5 h-5"></i>
                             <div className="text-right hidden sm:block">
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">Status</p>
-                                <p className="text-[10px] font-mono font-bold text-blue-500 uppercase">Secure Offline Terminal</p>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">Security Status</p>
+                                <p className="text-[10px] font-mono font-bold text-blue-500 uppercase">Secure Examination Node</p>
                             </div>
                         </div>
                     </header>
 
-                    <main className="main-container flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 md:px-6">
+                    <main className="main-container flex-1 flex flex-col max-w-7xl mx-auto w-full px-4 md:px-6 text-left">
                         
                         {/* VIEW: HOME */}
                         {view === 'home' && (
                             <div className="flex flex-col items-center justify-center text-center my-auto animate-fade-in py-10">
                                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-600/10 border border-blue-500/20 text-blue-400 text-[8px] md:text-[10px] font-black uppercase mb-8 md:mb-12 tracking-widest">
-                                    <i data-lucide="zap" className="w-3 h-3 md:w-4 md:h-4 fill-blue-400"></i> No Database Link Required
+                                    <i data-lucide="award" className="w-3 h-3 md:w-4 md:h-4 fill-blue-400"></i> Official Examination Node
                                 </div>
                                 <h1 className="text-4xl md:text-8xl lg:text-9xl font-black text-white mb-6 md:mb-8 tracking-tighter leading-none heading-font italic uppercase italic text-center">BCA <span className="text-blue-500 uppercase">Modasa.</span></h1>
                                 
                                 <div className="bg-red-500/10 border border-red-500/20 p-4 md:p-6 rounded-2xl md:rounded-3xl mb-8 md:mb-12 max-w-2xl mx-auto backdrop-blur-md">
                                     <div className="flex items-center justify-center gap-2 text-red-500 mb-2 font-black uppercase tracking-widest text-[8px] md:text-[10px]">
-                                        <i data-lucide="alert-circle" className="w-4 h-4"></i> Notice
+                                        <i data-lucide="alert-circle" className="w-4 h-4"></i> Important Notice
                                     </div>
                                     <p className="text-slate-300 text-xs md:text-base font-semibold italic text-center">
-                                        Terminal session window ends on <span className="text-white underline decoration-red-500 underline-offset-4 font-bold">29-12-2025 at 12:00 PM</span>.
+                                        Examination session window ends on <span className="text-white underline decoration-red-500 underline-offset-4 font-bold">29-12-2025 at 12:00 PM</span>.
                                     </p>
                                 </div>
 
-                                <p className="text-slate-400 text-sm md:text-2xl max-w-3xl mx-auto mb-10 md:mb-16 leading-relaxed font-medium opacity-70 uppercase italic text-center">Official Python Programming Standalone Gateway. <br/> Managed by Professor Amit Raval.</p>
+                                <p className="text-slate-400 text-sm md:text-2xl max-w-3xl mx-auto mb-10 md:mb-16 leading-relaxed font-medium opacity-70 uppercase italic text-center">Semester 4 Official Python Programming Examination. <br/> Managed by Professor Amit Raval.</p>
                                 
-                                <button onClick={() => setView('student-form')} className="px-10 py-4 md:px-20 md:py-8 gradient-btn text-white font-bold rounded-xl md:rounded-3xl shadow-xl text-xs md:text-lg active:scale-95 transition-all uppercase tracking-widest italic">Enter Terminal</button>
+                                <button onClick={() => setView('student-form')} className="px-10 py-4 md:px-20 md:py-8 gradient-btn text-white font-bold rounded-xl md:rounded-3xl shadow-xl text-xs md:text-lg active:scale-95 transition-all uppercase tracking-widest italic">Start Examination</button>
                             </div>
                         )}
 
@@ -328,24 +327,24 @@
                         {view === 'student-form' && (
                             <div className="max-w-xl mx-auto mt-6 md:mt-10 w-full animate-fade-in pb-10">
                                 <div className="readable-card p-8 md:p-20 rounded-3xl md:rounded-[5rem] relative shadow-2xl border-t-blue-500/40 text-center">
-                                    <h2 className="text-4xl md:text-6xl font-black text-white mb-2 md:mb-4 uppercase italic leading-none italic text-center text-left">Login</h2>
-                                    <p className="text-blue-400 font-black tracking-widest text-[8px] md:text-xs uppercase italic opacity-70 mb-10 md:mb-20 text-center uppercase">Student Authentication</p>
+                                    <h2 className="text-4xl md:text-6xl font-black text-white mb-2 md:mb-4 uppercase italic leading-none italic text-center">Login</h2>
+                                    <p className="text-blue-400 font-black tracking-widest text-[8px] md:text-xs uppercase italic opacity-70 mb-10 md:mb-20 text-center uppercase font-bold">Student Authentication</p>
                                     <div className="space-y-6 md:y-12 text-left">
                                         <div className="space-y-2 md:space-y-5">
-                                            <label className="text-[8px] md:text-xs text-blue-500 font-black uppercase tracking-widest ml-2 block italic text-left">Academic Name</label>
-                                            <input type="text" value={studentData.name} onChange={e => setStudentData({...studentData, name: e.target.value})} className="w-full input-field rounded-xl md:rounded-[2.5rem] p-4 md:p-8 text-sm md:text-2xl outline-none shadow-xl uppercase font-semibold" placeholder="Full Name" />
+                                            <label className="text-[8px] md:text-xs text-blue-500 font-black uppercase tracking-widest ml-2 block italic text-left">Candidate Name</label>
+                                            <input type="text" value={studentData.name} onChange={e => setStudentData({...studentData, name: e.target.value})} className="w-full input-field rounded-xl md:rounded-[2.5rem] p-4 md:p-8 text-sm md:text-2xl outline-none shadow-xl uppercase font-semibold" placeholder="Enter Full Name" />
                                         </div>
                                         <div className="space-y-2 md:space-y-5">
                                             <label className="text-[8px] md:text-xs text-blue-500 font-black uppercase tracking-widest ml-2 block italic text-left">Roll Number</label>
                                             <input type="text" value={studentData.roll} onChange={e => setStudentData({...studentData, roll: e.target.value})} className="w-full input-field rounded-xl md:rounded-[2.5rem] p-4 md:p-8 text-sm md:text-2xl font-mono outline-none shadow-xl uppercase font-bold" placeholder="ID (e.g. 50)" />
                                         </div>
-                                        <button onClick={startExam} className="w-full py-5 md:py-10 gradient-btn text-white font-black rounded-xl md:rounded-[4rem] text-[10px] md:text-sm mt-4 md:mt-10 active:scale-95 italic transition-all shadow-xl">Start Session</button>
+                                        <button onClick={startExam} className="w-full py-5 md:py-10 gradient-btn text-white font-black rounded-xl md:rounded-[4rem] text-[10px] md:text-sm mt-4 md:mt-10 active:scale-95 italic transition-all shadow-xl">Start Exam</button>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* VIEW: EXAMINATION TERMINAL */}
+                        {/* VIEW: EXAM INTERFACE */}
                         {view === 'exam' && (
                             <div className="animate-fade-in no-select w-full pb-10">
                                 <div className="header-glass p-4 md:p-8 rounded-2xl md:rounded-[3rem] mb-6 md:mb-12 flex flex-wrap justify-between items-center gap-4 shadow-xl relative">
@@ -358,21 +357,21 @@
                                     </div>
                                     <div className="flex items-center gap-6 md:gap-12 ml-auto text-right">
                                         <div className="font-mono text-left"><span className={`text-xl md:text-4xl font-black tabular-nums ${examState.timeLeft < 300 ? 'text-red-500 animate-pulse' : 'text-blue-400'}`}>{Math.floor(examState.timeLeft / 60)}:{(examState.timeLeft % 60).toString().padStart(2, '0')}</span></div>
-                                        <button onClick={() => submitExam()} className="px-4 py-2 md:px-10 md:py-4 bg-red-600 hover:bg-red-700 text-white rounded-lg md:rounded-2xl font-black uppercase text-[8px] md:text-xs shadow-lg italic transition-all">Finish Assessment</button>
+                                        <button onClick={() => submitExam()} className="px-4 py-2 md:px-10 md:py-4 bg-red-600 hover:bg-red-700 text-white rounded-lg md:rounded-2xl font-black uppercase text-[8px] md:text-xs shadow-lg italic transition-all">Finish Exam</button>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-12 text-left">
                                     <div className="lg:col-span-3 space-y-6 md:space-y-12 text-left">
                                         <div className="readable-card p-6 md:p-16 rounded-3xl md:rounded-[5rem] shadow-xl min-h-[350px] md:min-h-[600px] flex flex-col border-t-blue-500/30 text-left">
-                                            <div className="flex items-center gap-4 mb-6 md:mb-12 border-b border-white/5 pb-4 text-left"><p className="text-blue-400 font-mono text-[8px] md:text-xs font-black tracking-widest uppercase italic underline decoration-blue-500 underline-offset-4 text-left">Question {examState.currentIndex + 1} / 25</p></div>
+                                            <div className="flex items-center gap-4 mb-6 md:mb-12 border-b border-white/5 pb-4 text-left"><p className="text-blue-400 font-mono text-[8px] md:text-xs font-black tracking-widest uppercase italic underline decoration-blue-500 underline-offset-4 text-left">Saval {examState.currentIndex + 1} of 25</p></div>
                                             <h2 className="text-lg md:text-4xl font-black leading-snug mb-8 md:mb-16 text-white italic tracking-tight text-left">{examState.questions[examState.currentIndex]?.q}</h2>
                                             <div className="grid grid-cols-1 gap-3 md:gap-6 mt-auto text-left">
                                                 {examState.questions[examState.currentIndex]?.options.map((opt, i) => (
                                                     <button key={i} onClick={() => setExamState({...examState, answers: {...examState.answers, [examState.currentIndex]: i}})} className={`w-full p-4 md:p-8 text-left rounded-2xl md:rounded-[3rem] border-2 transition-all flex justify-between items-center group ${examState.answers[examState.currentIndex] === i ? 'bg-blue-600 border-blue-400 text-white scale-[1.01]' : 'bg-slate-900 border-white/5 text-slate-400 hover:bg-slate-800'}`}>
                                                         <span className="font-black text-xs md:text-2xl tracking-tighter uppercase italic text-left leading-tight">{opt}</span>
                                                         <div className={`w-5 h-5 md:w-8 md:h-8 rounded-full border-2 flex items-center justify-center ${examState.answers[examState.currentIndex] === i ? 'border-white bg-blue-500 shadow-lg' : 'border-slate-800 bg-slate-950'}`}>
-                                                            {examState.answers[examState.currentIndex] === i && <div className="w-2.5 h-2.5 md:w-4 md:h-4 bg-white rounded-full"></div>}
+                                                            {examState.answers[examState.currentIndex] === i && <div className="w-2.5 h-2.5 md:w-4 md:h-4 bg-white rounded-full shadow-lg"></div>}
                                                         </div>
                                                     </button>
                                                 ))}
@@ -384,9 +383,9 @@
                                         </div>
                                     </div>
 
-                                    <div className="lg:col-span-1 space-y-8 md:space-y-16 h-fit lg:sticky lg:top-32 text-left text-left">
+                                    <div className="lg:col-span-1 space-y-8 md:space-y-16 h-fit lg:sticky lg:top-32 text-left">
                                         <div className="readable-card p-6 md:p-10 rounded-3xl md:rounded-[3.5rem] shadow-xl text-left">
-                                            <div className="flex items-center gap-3 mb-6 md:mb-10 border-b border-white/10 pb-4 text-left"><i data-lucide="layout-grid" className="w-5 h-5 md:w-6 md:h-6 text-blue-500"></i><h4 className="font-black text-slate-100 text-[10px] md:text-xs uppercase tracking-widest italic text-left">Matrix</h4></div>
+                                            <div className="flex items-center gap-3 mb-6 md:mb-10 border-b border-white/10 pb-4 text-left"><i data-lucide="layout-grid" className="w-5 h-5 md:w-6 md:h-6 text-blue-500"></i><h4 className="font-black text-slate-100 text-[10px] md:text-xs uppercase tracking-widest italic text-left">Matrix Map</h4></div>
                                             <div className="grid grid-cols-5 gap-2 md:gap-4">
                                                 {examState.questions.map((_, i) => {
                                                     const isSelected = examState.answers[i] !== undefined;
@@ -405,7 +404,7 @@
                             </div>
                         )}
 
-                        {/* VIEW: RESULT PAGE */}
+                        {/* VIEW: RESULT AND PDF DOWNLOAD */}
                         {view === 'result' && (
                             <div className="max-w-4xl mx-auto mt-4 md:mt-10 animate-fade-in w-full pb-20 text-center flex-1 flex flex-col justify-center">
                                 <div className="readable-card p-10 md:p-24 rounded-3xl md:rounded-[6rem] shadow-2xl border-t-blue-500/40 relative overflow-hidden text-center">
@@ -417,7 +416,7 @@
                                         {finalResult?.score}<span className="text-2xl md:text-4xl text-slate-500 opacity-50 uppercase ml-4">/ 25</span>
                                     </div>
                                     
-                                    <div className="space-y-6 md:space-y-8 mb-16 text-center text-center">
+                                    <div className="space-y-6 md:space-y-8 mb-16 text-center">
                                         <p className="text-xl md:text-4xl font-bold text-white uppercase tracking-tight italic text-center">{finalResult?.name}</p>
                                         <div className="bg-blue-600/10 border border-blue-500/20 py-4 px-8 rounded-full inline-block">
                                             <p className="text-blue-400 font-mono text-sm md:text-xl font-black uppercase tracking-[0.3em]">ID: {finalResult?.roll}</p>
@@ -431,7 +430,7 @@
                                         <button onClick={() => setView('home')} className="px-10 py-5 bg-slate-900 border border-white/10 text-white font-black rounded-2xl shadow-xl hover:bg-slate-800 transition-all active:scale-95 uppercase tracking-widest text-[10px] italic">Return to Home</button>
                                     </div>
                                     
-                                    <p className="mt-12 text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] italic">Report includes all Question-wise inputs and correct answers.</p>
+                                    <p className="mt-12 text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] italic">Note: Scorecard with detailed answers generated locally.</p>
                                 </div>
                             </div>
                         )}
@@ -443,9 +442,9 @@
                             <div className="space-y-4 text-left">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-600/20 rounded-lg flex items-center justify-center p-1 overflow-hidden"><PythonLogo /></div>
-                                    <h3 className="text-lg md:text-2xl font-black tracking-tighter text-white uppercase italic leading-none">BCA MODASA</h3>
+                                    <h3 className="text-lg md:text-2xl font-black tracking-tighter text-white uppercase italic leading-none text-left">BCA MODASA</h3>
                                 </div>
-                                <p className="text-slate-400 text-[10px] md:text-sm leading-relaxed italic text-left">Stand-alone academic assessment node. All report packets are generated locally for data privacy.</p>
+                                <p className="text-slate-400 text-[10px] md:text-sm leading-relaxed italic text-left">Official standalone academic examination gateway. All reports are processed locally for integrity.</p>
                             </div>
                             <div className="space-y-4 md:text-right text-left">
                                 <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-500 italic">Faculty Lead</h4>
