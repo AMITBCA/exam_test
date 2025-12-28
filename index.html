@@ -26,14 +26,14 @@
             scroll-padding-top: var(--header-height);
             margin: 0;
             overflow-x: hidden;
-            /* Prevent text selection for security */
+            /* Security: Text selection lock */
             user-select: none;
             -webkit-user-select: none;
         }
 
         .heading-font { font-family: 'Plus Jakarta Sans', sans-serif; }
 
-        /* Custom Scrollbar */
+        /* Scrollbar styling */
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: #020617; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
@@ -74,16 +74,14 @@
         }
         .input-field:focus {
             border-color: #3b82f6;
-            background: rgba(0, 0, 0, 1);
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
         }
-        .input-field::placeholder { color: rgba(255, 255, 255, 0.4) !important; }
 
         .gradient-btn {
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .gradient-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 24px -6px rgba(37, 99, 235, 0.5); }
+        .gradient-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
 
         .blob {
             position: absolute; width: 300px; height: 300px;
@@ -93,32 +91,21 @@
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        
-        .result-row { transition: all 0.3s ease; }
-        .result-row:hover { background: rgba(59, 130, 246, 0.05); }
     </style>
 </head>
 <body class="min-h-screen custom-scroll overflow-y-auto relative no-select">
-    <div class="blob top-0 left-0"></div>
-    <div class="blob bottom-0 right-0"></div>
     <div id="root"></div>
 
-    <!-- Security Script (Anti-Cheat) -->
+    <!-- Security Logic (Anti-Inspect) -->
     <script>
-        // Disable Right Click
-        document.addEventListener('contextmenu', event => event.preventDefault());
-
-        // Disable Common Dev Shortcut Keys
+        document.addEventListener('contextmenu', e => e.preventDefault());
         document.onkeydown = function(e) {
-            if (e.keyCode == 123) return false; // F12
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // Inspect
-            if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // Console
-            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // View Source
-            if (e.ctrlKey && e.keyCode == 'S'.charCodeAt(0)) return false; // Save
+            if (e.keyCode == 123 || 
+                (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74)) || 
+                (e.ctrlKey && e.keyCode == 85)) {
+                return false;
+            }
         };
-
-        console.log("%cStop!", "color: red; font-size: 3em; font-weight: bold;");
-        console.log("This terminal is secured for Professor Amit Raval's assessment.");
     </script>
 
     <script type="text/babel" data-type="module">
@@ -126,14 +113,19 @@
         import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, onSnapshot, query, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useMemo } = React;
 
-        // --- Firebase Core Initialization ---
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'bca-modasa-python-2025';
+        // --- Firebase Guard Initialization (Rule 1 & 3) ---
+        let db, auth, appId;
+        try {
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "" };
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            appId = typeof __app_id !== 'undefined' ? __app_id : 'bca-modasa-python-2025';
+        } catch (e) {
+            console.warn("Cloud connection limited in static mode.");
+        }
 
         const QUESTION_POOL = [
             { q: "Who is the primary developer of the Python programming language?", options: ["Guido van Rossum", "Dennis Ritchie", "Bjarne Stroustrup", "James Gosling"], correct: 0 },
@@ -185,8 +177,9 @@
             const examStart = new Date('2025-12-27T07:32:00');
             const examEnd = new Date('2025-12-29T12:00:00'); 
 
-            // Auth Logic (Rule 3) - Fixed for Instant Access
+            // Auth Logic (Rule 3) - Ensuring fast login to enable data streams
             useEffect(() => {
+                if (!auth) return;
                 const initAuth = async () => {
                     try {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -194,9 +187,7 @@
                         } else {
                             await signInAnonymously(auth);
                         }
-                    } catch (e) {
-                        console.error("Auth Standby.");
-                    }
+                    } catch (e) { console.error("Database connection standby."); }
                 };
                 initAuth();
                 const unsub = onAuthStateChanged(auth, setUser);
@@ -204,20 +195,20 @@
                 return () => { unsub(); clearInterval(clock); };
             }, []);
 
-            // --- REAL-TIME LIVE FEED (Rule 1 & 2) ---
+            // --- REAL-TIME RESULTS FEED (Rule 1 & 2) ---
             useEffect(() => {
-                if (!user) return; // Wait for Auth
+                if (!user || !db) return; // Wait for Auth & Database
                 
                 const resultsCol = collection(db, 'artifacts', appId, 'public', 'data', 'results');
                 
-                // onSnapshot ensures real-time updates from database nodes
+                // onSnapshot allows real-time updates for all previous and new students
                 const unsubRes = onSnapshot(resultsCol, (snap) => {
                     const rawData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    // Sort in memory - descending score for ranking
+                    // Sort in memory - descending score for live leaderboard ranking
                     const sortedData = rawData.sort((a, b) => (b.score || 0) - (a.score || 0));
                     setResults(sortedData);
                 }, (error) => {
-                    console.error("Live Sync Stream Restricted:", error);
+                    console.error("Live Synchronization Restricted:", error);
                 });
                 
                 return () => unsubRes();
@@ -231,11 +222,12 @@
 
             const startExam = async () => {
                 if (currentTime > examEnd) return triggerModal("Exam Closed", "Portal closed on 29-12-2025 at 12:00 PM.", "error");
-                if (!studentData.name || !studentData.roll) return triggerModal("Details Required", "Please enter your name and roll number.", "error");
+                if (!studentData.name || !studentData.roll) return triggerModal("Input Required", "Please enter your name and roll number.", "error");
                 
+                // Re-attempt security check
                 const existing = results.find(r => r.roll === studentData.roll);
                 if (existing) {
-                    return triggerModal("Prior Attempt", "Roll No entry already exists. Contact Prof. Amit Raval.", "info");
+                    return triggerModal("Access Denied", "Prior attempt detected for this Roll No. Contact Prof. Amit Raval.", "info");
                 }
 
                 try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch(e) {}
@@ -245,7 +237,7 @@
             };
 
             const submitExam = async (auto = false) => {
-                if (!user) return triggerModal("Session Error", "Authentication lost. Refresh page.", "error");
+                if (!user) return triggerModal("Sync Lost", "Authentication timed out. Please refresh.", "error");
                 if (!auto && !confirm("Finalize assessment and finish examination?")) return;
                 
                 try {
@@ -263,7 +255,7 @@
                         };
                     });
 
-                    // Store results strictly in public path for live access (Rule 1)
+                    // Store results strictly in public path (Rule 1)
                     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'results', studentData.roll), {
                         name: studentData.name, 
                         roll: studentData.roll, 
@@ -275,9 +267,9 @@
                     });
 
                     setExamState(prev => ({ ...prev, active: false }));
-                    setView('result'); // Jump straight to live rankings
+                    setView('result'); // Send directly to Results feed
                 } catch (e) { 
-                    triggerModal("Upload Failed", "Connectivity issue. Result not saved to cloud.", "error"); 
+                    triggerModal("Upload Failed", "Connectivity issue. Result not saved to node.", "error"); 
                 }
             };
 
@@ -312,18 +304,18 @@
                             </div>
                             <div>
                                 <h1 className="text-white font-extrabold text-[10px] md:text-lg leading-none uppercase tracking-tight heading-font">BCA <span className="hidden sm:inline">COLLEGE</span> <span className="text-blue-400">MODASA</span></h1>
-                                <p className="text-slate-400 text-[8px] md:text-[10px] uppercase font-bold mt-1 tracking-widest italic opacity-70">Prof. Amit Raval</p>
+                                <p className="text-slate-400 text-[8px] md:text-[10px] uppercase font-bold mt-1 tracking-widest italic opacity-70 text-left">Prof. Amit Raval</p>
                             </div>
                         </div>
-                        <nav className="flex items-center gap-4 md:gap-10">
+                        <nav className="flex items-center gap-3 md:gap-10">
                             {['Home', 'Examination', 'Results'].map((label, idx) => (
                                 <button key={idx} onClick={() => setView(label === 'Examination' ? 'student-form' : label.toLowerCase())} className={`text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all ${view.includes(label.toLowerCase()) ? 'text-blue-400 border-b-2 border-blue-400 pb-1' : 'text-slate-400 hover:text-white'}`}>{label}</button>
                             ))}
                         </nav>
-                        <div className="hidden lg:flex items-center gap-4 border-l border-white/10 pl-6">
+                        <div className="hidden sm:flex items-center gap-4 border-l border-white/10 pl-6">
                             <i data-lucide="shield-check" className="text-blue-500 w-5 h-5"></i>
                             <div className="text-right">
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Help Node</p>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Support Node</p>
                                 <p className="text-[10px] font-mono font-bold text-blue-500">+91 9638143173</p>
                             </div>
                         </div>
@@ -333,20 +325,20 @@
                         {view === 'home' && (
                             <div className="flex flex-col items-center justify-center text-center my-auto animate-fade-in py-8">
                                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-600/10 border border-blue-500/20 text-blue-400 text-[8px] md:text-[10px] font-black uppercase mb-8 md:mb-12 tracking-widest">
-                                    <i data-lucide="zap" className="w-3 h-3 md:w-4 md:h-4 fill-blue-400"></i> Assessment terminal Node
+                                    <i data-lucide="zap" className="w-3 h-3 md:w-4 md:h-4 fill-blue-400"></i> Assessment terminal gateway
                                 </div>
-                                <h1 className="text-4xl md:text-8xl lg:text-9xl font-black text-white mb-6 md:mb-8 tracking-tighter leading-none heading-font italic uppercase">BCA <span className="text-blue-500 uppercase">Modasa.</span></h1>
+                                <h1 className="text-4xl md:text-8xl lg:text-9xl font-black text-white mb-6 md:mb-8 tracking-tighter leading-none heading-font italic uppercase italic text-center">BCA <span className="text-blue-500 uppercase">Modasa.</span></h1>
                                 
                                 <div className="bg-red-500/10 border border-red-500/20 p-4 md:p-6 rounded-2xl md:rounded-3xl mb-8 md:mb-12 max-w-2xl mx-auto backdrop-blur-md">
                                     <div className="flex items-center justify-center gap-2 text-red-500 mb-2 font-black uppercase tracking-widest text-[8px] md:text-[10px]">
-                                        <i data-lucide="alert-circle" className="w-4 h-4"></i> Important Notice
+                                        <i data-lucide="alert-circle" className="w-4 h-4"></i> Session Notice
                                     </div>
                                     <p className="text-slate-300 text-xs md:text-base font-semibold italic">
-                                        Terminal session window ends on <span className="text-white underline decoration-red-500 underline-offset-4">29-12-2025 at 12:00 PM</span>.
+                                        Terminal session window ends on <span className="text-white underline decoration-red-500 underline-offset-4 font-bold">29-12-2025 at 12:00 PM</span>.
                                     </p>
                                 </div>
 
-                                <p className="text-slate-400 text-sm md:text-2xl max-w-3xl mx-auto mb-10 md:mb-16 leading-relaxed font-medium opacity-80 uppercase italic">Official Python Programming Assessment gateway. <br/> Managed by Professor Amit Raval.</p>
+                                <p className="text-slate-400 text-sm md:text-2xl max-w-3xl mx-auto mb-10 md:mb-16 leading-relaxed font-medium opacity-80 uppercase italic text-center">Official Python Programming assessment gateway. <br/> Managed by Professor Amit Raval.</p>
                                 
                                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                                     {isExamLive ? (
@@ -361,17 +353,17 @@
                             <div className="max-w-xl mx-auto mt-6 md:mt-10 w-full animate-fade-in pb-10">
                                 <div className="readable-card p-8 md:p-20 rounded-3xl md:rounded-[5rem] relative shadow-2xl border-t-blue-500/40 text-center">
                                     <h2 className="text-4xl md:text-6xl font-black text-white mb-2 md:mb-4 uppercase italic leading-none italic">Login</h2>
-                                    <p className="text-blue-400 font-black tracking-widest text-[8px] md:text-xs uppercase italic opacity-70 mb-10 md:mb-20 uppercase">Validation Protocol</p>
+                                    <p className="text-blue-400 font-black tracking-widest text-[8px] md:text-xs uppercase italic opacity-70 mb-10 md:mb-20">Identity Validation Protocol</p>
                                     <div className="space-y-6 md:y-12 text-left">
                                         <div className="space-y-2 md:space-y-5">
-                                            <label className="text-[8px] md:text-xs text-blue-500 font-black uppercase tracking-widest ml-2 block italic">Candidate Full Name</label>
-                                            <input type="text" value={studentData.name} onChange={e => setStudentData({...studentData, name: e.target.value})} className="w-full input-field rounded-xl md:rounded-[2.5rem] p-4 md:p-8 text-sm md:text-2xl outline-none shadow-xl uppercase font-semibold" placeholder="Academic Name" />
+                                            <label className="text-[8px] md:text-xs text-blue-500 font-black uppercase tracking-widest ml-2 block italic">Academic Name</label>
+                                            <input type="text" value={studentData.name} onChange={e => setStudentData({...studentData, name: e.target.value})} className="w-full input-field rounded-xl md:rounded-[2.5rem] p-4 md:p-8 text-sm md:text-2xl outline-none shadow-xl uppercase font-semibold" placeholder="Full Name" />
                                         </div>
                                         <div className="space-y-2 md:space-y-5">
-                                            <label className="text-[8px] md:text-xs text-blue-500 font-black uppercase tracking-widest ml-2 block italic">College Roll Number</label>
+                                            <label className="text-[8px] md:text-xs text-blue-500 font-black uppercase tracking-widest ml-2 block italic">Roll Number</label>
                                             <input type="text" value={studentData.roll} onChange={e => setStudentData({...studentData, roll: e.target.value})} className="w-full input-field rounded-xl md:rounded-[2.5rem] p-4 md:p-8 text-sm md:text-2xl font-mono outline-none shadow-xl uppercase font-bold" placeholder="ID (e.g. 50)" />
                                         </div>
-                                        <button onClick={startExam} className="w-full py-5 md:py-10 gradient-btn text-white font-black rounded-xl md:rounded-[4rem] text-[10px] md:text-sm mt-4 md:mt-10 active:scale-95 italic">Authorize Access</button>
+                                        <button onClick={startExam} className="w-full py-5 md:py-10 gradient-btn text-white font-black rounded-xl md:rounded-[4rem] text-[10px] md:text-sm mt-4 md:mt-10 active:scale-95 italic transition-all">Authorize Access</button>
                                     </div>
                                 </div>
                             </div>
@@ -389,21 +381,21 @@
                                     </div>
                                     <div className="flex items-center gap-6 md:gap-12 ml-auto text-right">
                                         <div className="font-mono"><span className={`text-xl md:text-4xl font-black tabular-nums ${examState.timeLeft < 300 ? 'text-red-500 animate-pulse' : 'text-blue-400'}`}>{Math.floor(examState.timeLeft / 60)}:{(examState.timeLeft % 60).toString().padStart(2, '0')}</span></div>
-                                        <button onClick={() => submitExam()} className="px-4 py-2 md:px-10 md:py-4 bg-red-600 hover:bg-red-700 text-white rounded-lg md:rounded-2xl font-black uppercase text-[8px] md:text-xs shadow-lg italic">Finish Examination</button>
+                                        <button onClick={() => submitExam()} className="px-4 py-2 md:px-10 md:py-4 bg-red-600 hover:bg-red-700 text-white rounded-lg md:rounded-2xl font-black uppercase text-[8px] md:text-xs italic shadow-lg">Finish Examination</button>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-12 text-left">
-                                    <div className="lg:col-span-3 space-y-6 md:space-y-12">
-                                        <div className="readable-card p-6 md:p-16 rounded-3xl md:rounded-[5rem] shadow-xl min-h-[350px] md:min-h-[600px] flex flex-col border-t-blue-500/30">
+                                    <div className="lg:col-span-3 space-y-6 md:space-y-12 text-left">
+                                        <div className="readable-card p-6 md:p-16 rounded-3xl md:rounded-[5rem] shadow-xl min-h-[350px] md:min-h-[600px] flex flex-col border-t-blue-500/30 text-left">
                                             <div className="flex items-center gap-4 mb-6 md:mb-12 border-b border-white/5 pb-4"><p className="text-blue-400 font-mono text-[8px] md:text-xs font-black tracking-widest uppercase italic underline decoration-blue-500 underline-offset-4">Question {examState.currentIndex + 1} / 25</p></div>
-                                            <h2 className="text-lg md:text-4xl font-black leading-snug mb-8 md:mb-16 text-white italic tracking-tight">{examState.questions[examState.currentIndex]?.q}</h2>
-                                            <div className="grid grid-cols-1 gap-3 md:gap-6 mt-auto">
+                                            <h2 className="text-lg md:text-4xl font-black leading-snug mb-8 md:mb-16 text-white italic tracking-tight text-left">{examState.questions[examState.currentIndex]?.q}</h2>
+                                            <div className="grid grid-cols-1 gap-3 md:gap-6 mt-auto text-left">
                                                 {examState.questions[examState.currentIndex]?.options.map((opt, i) => (
                                                     <button key={i} onClick={() => setExamState({...examState, answers: {...examState.answers, [examState.currentIndex]: i}})} className={`w-full p-4 md:p-8 text-left rounded-2xl md:rounded-[3rem] border-2 transition-all flex justify-between items-center group ${examState.answers[examState.currentIndex] === i ? 'bg-blue-600 border-blue-400 text-white scale-[1.01]' : 'bg-slate-900 border-white/5 text-slate-400 hover:bg-slate-800'}`}>
-                                                        <span className="font-black text-xs md:text-2xl tracking-tighter uppercase italic">{opt}</span>
+                                                        <span className="font-black text-xs md:text-2xl tracking-tighter uppercase italic leading-tight text-left">{opt}</span>
                                                         <div className={`w-5 h-5 md:w-8 md:h-8 rounded-full border-2 flex items-center justify-center ${examState.answers[examState.currentIndex] === i ? 'border-white bg-blue-500 shadow-lg' : 'border-slate-800 bg-slate-950'}`}>
-                                                            {examState.answers[examState.currentIndex] === i && <div className="w-2.5 h-2.5 md:w-4 md:h-4 bg-white rounded-full shadow-lg"></div>}
+                                                            {examState.answers[examState.currentIndex] === i && <div className="w-2.5 h-2.5 md:w-4 md:h-4 bg-white rounded-full"></div>}
                                                         </div>
                                                     </button>
                                                 ))}
@@ -417,7 +409,7 @@
 
                                     <div className="lg:col-span-1 space-y-8 md:space-y-16 h-fit lg:sticky lg:top-32 text-left">
                                         <div className="readable-card p-6 md:p-10 rounded-3xl md:rounded-[3.5rem] shadow-xl">
-                                            <div className="flex items-center gap-3 mb-6 md:mb-10 border-b border-white/10 pb-4"><i data-lucide="layout-grid" className="w-5 h-5 md:w-6 md:h-6 text-blue-500"></i><h4 className="font-black text-slate-100 text-[10px] md:text-xs uppercase tracking-widest italic">Grid Map</h4></div>
+                                            <div className="flex items-center gap-3 mb-6 md:mb-10 border-b border-white/10 pb-4 text-left"><i data-lucide="layout-grid" className="w-5 h-5 md:w-6 md:h-6 text-blue-500"></i><h4 className="font-black text-slate-100 text-[10px] md:text-xs uppercase tracking-widest italic">Matrix</h4></div>
                                             <div className="grid grid-cols-5 gap-2 md:gap-4">
                                                 {examState.questions.map((_, i) => {
                                                     const isSelected = examState.answers[i] !== undefined;
@@ -440,38 +432,38 @@
                             </div>
                         )}
 
-                        {/* --- LIVE RESULTS VIEW (Fixed Real-time Logic) --- */}
+                        {/* --- ENHANCED LIVE RESULTS VIEW --- */}
                         {view === 'result' && (
                             <div className="max-w-5xl mx-auto mt-4 md:mt-10 animate-fade-in w-full pb-20 text-left">
-                                <div className="readable-card p-6 md:p-16 rounded-3xl md:rounded-[5rem] shadow-2xl border-t-blue-500/40 relative overflow-hidden">
-                                    <div className="flex justify-between items-end mb-12 md:mb-20 relative z-10">
+                                <div className="readable-card p-6 md:p-16 rounded-3xl md:rounded-[5rem] shadow-2xl border-t-blue-500/40 relative overflow-hidden text-left">
+                                    <div className="flex justify-between items-end mb-12 md:mb-20 relative z-10 text-left">
                                         <div className="text-left">
-                                            <h2 className="text-4xl md:text-7xl font-black text-white mb-2 md:mb-4 uppercase italic leading-none underline decoration-blue-500 decoration-8 underline-offset-[10px]">Rankings</h2>
-                                            <p className="text-blue-400 font-black tracking-widest text-[8px] md:text-xs uppercase italic opacity-70">Live Terminal Synchronization</p>
+                                            <h2 className="text-4xl md:text-7xl font-black text-white mb-2 md:mb-4 uppercase italic leading-none underline decoration-blue-500 decoration-8 underline-offset-[10px] text-left">Results</h2>
+                                            <p className="text-blue-400 font-black tracking-widest text-[8px] md:text-xs uppercase italic opacity-70 text-left">Official Live Node Ranking Feed</p>
                                         </div>
                                         <i data-lucide="award" className="text-yellow-500 w-16 h-16 md:w-32 md:h-32 drop-shadow-[0_0_40px_rgba(234,179,8,0.5)] animate-pulse"></i>
                                     </div>
                                     
                                     <div className="space-y-4 md:space-y-6 relative z-10">
                                         {results.length === 0 ? (
-                                            <div className="text-center py-24 opacity-30 italic font-black uppercase tracking-[0.5em] text-white">Connecting to database nodes...</div>
+                                            <div className="text-center py-24 opacity-30 italic font-black uppercase tracking-[0.5em] text-white">Connecting to assessment nodes...</div>
                                         ) : (
                                             results.map((res, i) => (
-                                                <div key={i} className="group border-b border-white/5 pb-4 md:pb-8 last:border-none transition-all hover:bg-white/5 rounded-xl md:rounded-2xl p-2 md:p-4 result-row">
+                                                <div key={i} className="group border-b border-white/5 pb-4 md:pb-8 last:border-none transition-all hover:bg-white/5 rounded-xl md:rounded-2xl p-2 md:p-4 text-left">
                                                     <div className="flex justify-between items-center mb-2 md:mb-4 px-2 md:px-6">
                                                         <div className="flex items-center gap-4 md:gap-10">
-                                                            <span className={`w-8 h-8 md:w-16 md:h-16 rounded-lg md:rounded-2xl flex items-center justify-center text-xs md:text-3xl font-black italic shadow-2xl ${i === 0 ? 'bg-yellow-500 text-black rotate-12' : i === 1 ? 'bg-slate-300 text-black' : i === 2 ? 'bg-amber-700 text-white' : 'bg-slate-800 text-slate-500'}`}>{i+1}</span>
+                                                            <span className={`w-8 h-8 md:w-16 md:h-16 rounded-lg md:rounded-2xl flex items-center justify-center text-xs md:text-3xl font-black italic shadow-2xl ${i === 0 ? 'bg-yellow-500 text-black rotate-12 shadow-yellow-500/50' : i === 1 ? 'bg-slate-300 text-black' : i === 2 ? 'bg-amber-700 text-white' : 'bg-slate-800 text-slate-500'}`}>{i+1}</span>
                                                             <div className="text-left">
-                                                                <span className="font-black text-sm md:text-4xl text-slate-100 uppercase tracking-tighter italic leading-none group-hover:text-blue-400 transition-colors">{res.name}</span>
-                                                                <p className="text-[8px] md:text-[11px] text-slate-500 font-black tracking-widest mt-1 uppercase italic">ROLL NO: {res.roll}</p>
+                                                                <span className="font-black text-sm md:text-4xl text-slate-100 uppercase tracking-tighter italic leading-none group-hover:text-blue-400 transition-colors text-left">{res.name}</span>
+                                                                <p className="text-[8px] md:text-[11px] text-slate-500 font-black tracking-widest mt-1 uppercase italic text-left font-mono">ROLL_ID: {res.roll}</p>
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <span className="font-mono text-blue-500 text-lg md:text-6xl font-black tracking-tighter tabular-nums drop-shadow-lg">{res.score}<span className="text-[8px] md:text-xl opacity-20 uppercase ml-1 md:ml-4 italic tracking-widest">val</span></span>
+                                                            <span className="font-mono text-blue-500 text-lg md:text-6xl font-black tracking-tighter tabular-nums drop-shadow-lg">{res.score}<span className="text-[8px] md:text-xl opacity-20 uppercase ml-1 md:ml-4 italic tracking-widest text-left">val</span></span>
                                                         </div>
                                                     </div>
                                                     <div className="w-full bg-slate-950 h-1 md:h-3 rounded-full overflow-hidden border border-white/5 p-0.5 shadow-inner">
-                                                        <div className="h-full bg-gradient-to-r from-blue-700 via-blue-500 to-blue-400 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(59,130,246,0.5)]" style={{ width: `${(res.score/25)*100}%` }}></div>
+                                                        <div className="h-full bg-gradient-to-r from-blue-700 via-blue-500 to-blue-400 rounded-full transition-all duration-1000" style={{ width: `${(res.score/25)*100}%` }}></div>
                                                     </div>
                                                 </div>
                                             ))
@@ -485,19 +477,19 @@
                     {/* CLASSIC INSTITUTIONAL FOOTER */}
                     <footer className="mt-auto border-t-2 border-blue-500/20 py-10 md:py-20 bg-slate-950/90 backdrop-blur-xl relative z-20">
                         <div className="max-w-7xl mx-auto px-6 md:px-10 grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16 text-left">
-                            <div className="space-y-4 md:space-y-6">
+                            <div className="space-y-4 md:space-y-6 text-left">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-600/20 rounded-lg flex items-center justify-center p-1 overflow-hidden"><PythonLogo /></div>
                                     <h3 className="text-lg md:text-2xl font-black tracking-tighter text-white uppercase italic leading-none">BCA MODASA</h3>
                                 </div>
-                                <p className="text-slate-400 text-[10px] md:text-sm leading-relaxed italic">Providing technical excellence. Empowering Python developers via advanced assessment nodes.</p>
+                                <p className="text-slate-400 text-[10px] md:text-sm leading-relaxed italic text-left">Providing technical excellence. Empowering Python developers via advanced assessment nodes.</p>
                             </div>
                             <div className="space-y-4 md:space-y-6 text-left">
                                 <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-500 border-b border-white/5 pb-2 inline-block italic">Portal Navigation</h4>
                                 <ul className="space-y-2 md:space-y-4">
                                     {['Home', 'Examination', 'Results'].map(link => (
                                         <li key={link}>
-                                            <button onClick={() => setView(link === 'Examination' ? 'student-form' : link.toLowerCase())} className="text-slate-500 hover:text-white text-[10px] md:text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2 group"><span className="w-1 h-1 md:w-1.5 md:h-1.5 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></span>{link}</button>
+                                            <button onClick={() => setView(link === 'Examination' ? 'student-form' : link.toLowerCase())} className="text-slate-500 hover:text-white text-[10px] md:text-sm font-bold uppercase tracking-widest transition-colors flex items-center gap-2 group"><span className="w-1 h-1 md:w-1.5 md:h-1.5 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity text-left"></span>{link}</button>
                                         </li>
                                     ))}
                                 </ul>
@@ -511,8 +503,8 @@
                             </div>
                         </div>
                         <div className="max-w-7xl mx-auto px-6 md:px-10 mt-12 md:mt-20 pt-6 md:pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-center">
-                            <p className="text-slate-600 text-[8px] md:text-[10px] font-black uppercase tracking-widest">© 2025 BCA COLLEGE MODASA • ALL RIGHTS RESERVED</p>
-                            <p className="text-slate-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest italic md:text-right">Engineered by <span className="text-blue-500">Prof. Amit Raval</span></p>
+                            <p className="text-slate-600 text-[8px] md:text-[10px] font-black uppercase tracking-widest italic text-center">© 2025 BCA MODASA • ALL RIGHTS RESERVED</p>
+                            <p className="text-slate-500 text-[8px] md:text-[10px] font-black uppercase tracking-widest italic md:text-right italic">Engineered by <span className="text-blue-500">Prof. Amit Raval</span></p>
                         </div>
                     </footer>
                 </div>
